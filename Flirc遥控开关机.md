@@ -1,10 +1,9 @@
 # PVE + Flirc 遥控开关机虚拟机(通用方案)
 
-> 方案状态:原方案 2026-06-28(DeepSeek 对话存档),2026-09-05 **重构通用化**——单键 toggle、单一脚本、最小权限 Token,消除原版三份重复脚本
 > 适用:Proxmox VE 8.x/9.x;任意虚拟机(示例 VMID 200)
 > 链路:Flirc(红外→按键)→ triggerhappy(监听)→ PVE API Token(开关机)
 
-> 关系说明:本文是**宿主侧电源管理**,长期有效。虚拟机内用遥控操作媒体/应用的方案已随客厅 HTPC 方案放弃(桌面网页不支持 d-pad 遥控),详见 [Windows虚拟机部署/Windows10-11虚拟机部署指南.md](Windows虚拟机部署/Windows10-11虚拟机部署指南.md) §11。
+> 关系说明:本文是**宿主侧电源管理**——遥控只负责开关虚拟机,虚拟机内的媒体/应用操作交给各自的客厅化 UI 与控制器(通用桌面网页不适合纯遥控操作)。
 
 ---
 
@@ -196,10 +195,3 @@ systemctl enable triggerhappy
 4. **--insecure 说明**:localhost 直连场景可接受;如对外暴露 API 请换有效 SSL 证书并去掉该参数
 5. **(可选)日志轮转**:`/etc/logrotate.d/flirc-power` 配一行 `rotate 7 daily compress` 即可
 
----
-
-## 7. 附录:探索历程(原版存档)
-
-- 演进:BIOS USB 唤醒(需关机宿主)→ PCIe USB 控制器直通(宿主失联)→ SPICE USB 重定向(宿主无法监听)→ evsieve(参数语法兼容性差)→ triggerhappy(qm/pvesh 无会话认证上下文,exit 255)→ **triggerhappy + API Token** ✅
-- 关键教训:服务环境下无 PVE 会话票证,qm/pvesh 不可用,curl REST API + Token 彻底绕过会话依赖
-- 原方案全文(含逐版本脚本与详细调试)见 git 历史:commit `c7ac0ba` 之前的 `Flirc遥控启动虚拟机.md`

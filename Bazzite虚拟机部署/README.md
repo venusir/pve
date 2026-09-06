@@ -1,7 +1,5 @@
 # PVE Bazzite 虚拟机部署
 
-> **方案状态(2026-09-05)**:Bazzite 游戏机**重建中**——KVM 全虚拟化 + Deck 游戏版(LXC 不可行:Bazzite 是完整桌面 OS,显卡独占直通仅 KVM 支持)。此前 Win11 客厅方案已放弃,沿革见 [Windows虚拟机部署/Windows10-11虚拟机部署指南.md](../Windows虚拟机部署/Windows10-11虚拟机部署指南.md) §11。
-
 ## 目录内容
 
 | 文件 | 说明 |
@@ -9,7 +7,6 @@
 | [Bazzite部署指南.md](Bazzite部署指南.md) | ⭐ 完整部署教程:建机 → 安装 → 直通接入 → 点亮与配置 → 排错 |
 | [bazzite-deploy.sh](bazzite-deploy.sh) | 宿主侧一键建机脚本(dry-run/确认闸门,LINUX 客机版) |
 | [bazzite-init.sh](bazzite-init.sh) | Bazzite 客机内一键初始化(直通盘 ext4+挂载 / sshd / Steam 权限) |
-| [Steam硬盘库.md](Steam硬盘库.md) | 案例:直通硬盘添加 Steam 游戏库(Flatpak 权限 + 无显卡回桌面模式) |
 
 **直通接入统一使用** [Scripts/attach-all.sh](../Scripts/attach-all.sh)(客机无关;另有 attach-gpu/usb/disk 原语)——指南 §6 有用法。
 

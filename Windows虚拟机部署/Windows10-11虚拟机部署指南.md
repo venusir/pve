@@ -1,6 +1,5 @@
 # PVE 部署 Windows 10/11 虚拟机指南(单文档版)
 
-> 存档日期:2026-09-05(全流程实测修订;单文档化合并重装与企业版存档)
 > 适用:Proxmox VE 8.x/9.x;Windows 10 / Windows 11
 > 实测环境:i3-12100 + RX 6650 XT + PVE 9.2 + 两阶段脚本
 > 关联(顶层 PVE 通用直通指南):[显卡直通](../显卡直通.md) / [硬盘直通](../硬盘直通.md) / [Xbox直通](../Xbox直通.md)
@@ -12,7 +11,7 @@
 ```
 宿主机前置(§2) → 镜像与版本选择(§3) → 阶段A 建机脚本(§4) → noVNC 装系统(§5)
   → 系统配置五连(§6) → 阶段B 接入直通(§7) → 点亮画面与收尾(§8)
-  → 踩坑速查(§9) → 命令速查(§10) → 附录:客厅方案决策档案(§11,已放弃)
+  → 踩坑速查(§9) → 命令速查(§10)
 ```
 
 - 脚本:**win11-htpc-deploy.sh**(Windows 建机)、**[Scripts/attach-all.sh](../Scripts/attach-all.sh)**(直通接入,客机无关;另有 gpu/usb/disk 原语)——使用前拉 GitHub 最新版
@@ -65,10 +64,10 @@ bash win11-htpc-deploy.sh              # 输 Y 创建
 
 **Windows 10 用户**:脚本 `ostype` 固定为 win11,建机后补一条 `qm set <vmid> -ostype win10` 即可,其余通用(Win10 建议同样 q35+OVMF+TPM 一套,便于以后直升 Win11)。
 
-**⚠️ 脚本异常先核对版本**(历史 bug:静默退出/detect_iso 非零/pvesm path 传存储名返回空/名称正则漏空格,均已修复):
+**⚠️ 脚本异常先核对版本**(脚本持续迭代,使用前确认是最新版):
 
 ```bash
-grep -c storage.cfg win11-htpc-deploy.sh        # ≥1 为新版(attach-all 家族为 Scripts/ 新脚本,无需版本核对)
+grep -c storage.cfg win11-htpc-deploy.sh        # ≥1 为新版
 ```
 
 ## 5. noVNC 安装系统
@@ -172,13 +171,13 @@ startup: order=1
 4. **磁盘管理**(`Win+X`):直通盘显示"未初始化"或"脱机" → 右键**联机**(如脱机)→ 初始化 **GPT** → 新建卷 **NTFS** → 分配盘符(数据清空发生在此,确认无保留再动手)
 5. 若画面异常:先确认线/输入源 → 回退法(§7)排查;驱动问题重装后恢复直通
 
-## 9. 踩坑速查(全流程实测合并)
+## 9. 踩坑速查
 
 | # | 坑 | 现象 | 解决 |
 | --- | --- | --- | --- |
 | 1 | 浏览器上传大 ISO | 进度条卡 100% | scp 直传 `/var/lib/vz/template/iso/` |
-| 2 | 脚本静默退出/路径报错 | 零输出直接消失 / pvesm path 失败 | 旧 bug 已修;`--debug` 跟踪;核对版本(§4) |
-| 3 | attach 找不到 VM | 报"未找到 win11-htpc" | 旧 bug 已修(名称正则);或 `--vmid` 显式指定 |
+| 2 | 脚本静默退出/路径报错 | 零输出直接消失 / pvesm path 失败 | `--debug` 跟踪;核对版本(§4) |
+| 3 | attach 找不到 VM | 报"未找到 win11-htpc" | 核对版本(§4);或 `--vmid` 显式指定 |
 | 4 | 安装器看不到磁盘 | 选择磁盘页空白 | virtio-win 光驱 `vioscsi\w11\amd64`(Win10 用 w10) |
 | 5 | 选错安装盘 | 装到直通数据盘上 | 只看容量:虚拟盘 vs 直通盘(§5) |
 | 6 | OOBE 卡联网 | 无法下一步 | `OOBE\BYPASSNRO` / 注册表 BypassNRO |
@@ -218,39 +217,8 @@ qm config <vmid> | grep -E '^(hostpci|usb|vga|scsi|startup|boot|agent|ostype)'
 
 ---
 
-## 11. 附录:客厅影音+游戏方案决策档案(已放弃)
-
-> 2026-09-05 结论:**放弃**「PVE Win11 兼顾影音与游戏」客厅方案。完整过程原版见 git 历史(commit `84c1417` 之前的 `Win11客厅HTPC方案存档.md`),本文收录其不可再踩的结论。
-
-### 缘起
-
-在线流媒体(Netflix 4K 等)的 DRM 只认 Windows 的 Edge/PlayReady 且要求显卡物理输出——Linux 容器/虚拟机无解,故尝试用 Win11 VM + RX 6650 XT 直通搭建客厅 HTPC(游戏 + 流媒体)。
-
-### 已验证可行的部分(部署侧全部跑通)
-
-- GPU 直通(6650 XT + HDMI 音频)、USB/硬盘直通、AMD 驱动、RDP(`mstsc /admin`)、自动登录、开机自启链
-- Netflix 4K 链路要素:Edge(PlayReady)+ HEVC 视频扩展(`ms-windows-store://pdp/?ProductId=9n4wgh0z6vhq`)+ HDCP 2.2 物理直连;验证用正片播放时 `Ctrl+Alt+Shift+D` 看 2160p(测试片无 DRM 不能验证)
-- **遥控/手柄控制边界**:Xbox 手柄在 RDP 会话无效;电视遥控(Flirc→键盘)d-pad 只对"客厅化 UI"(Netflix 网页、Steam 大屏、Kodi)有效;**通用桌面网页(YouTube/B 站等)不支持方向键选择框**,纯遥控不适用
-
-### 放弃原因与结论
-
-1. 桌面网页是鼠标世界——"手柄游戏 + 电视遥控器控制网页流媒体"在 Windows 生态**不成立**;纯 d-pad 只配客厅化 UI
-2. Windows 网页的通用输入方案是**飞鼠**(空中鼠标/带触摸板迷你键盘),不是红外遥控
-3. 务实架构:**流媒体回电视原生 App(遥控体验最好),PC/VM 专注游戏**(Steam 大屏/Playnite 按库取舍:纯 Steam 用大屏,多平台含 Epic 用 Playnite 聚合)
-4. Netflix 4K+HDR 若为刚需才值得保留 Windows 侧流媒体(桌面形态 + 飞鼠),否则 1080p 交给电视 App 即可
-
-### 不会再踩的速记
-
-- Xbox 手柄配对键在**顶部 USB 口旁的小圆钮**(不是 logo 键);配对失败先换碱性电池/查固件(详见 [Xbox直通](../Xbox直通.md))
-- 显示器自动断连 = Windows 电源管理,设"从不";远程管理用 `mstsc /admin` 防止电视被踢回锁屏
-- 别把 Windows 账户转微软账户(本地账户 + 关设备加密最省心,踩过 BitLocker 锁盘)
-- 直通机 24h 常开的功耗远低于睡眠(VM 内睡眠不省电且唤醒黑屏风险高),要省电直接彻底关机
-
----
-
 ## 关联文档
 
 - [README.md](README.md) — 目录索引与快速开始
 - [显卡直通](../显卡直通.md) / [硬盘直通](../硬盘直通.md) / [Xbox直通](../Xbox直通.md) — PVE 通用直通指南(客户机无关)
-- [Bazzite虚拟机部署/Steam硬盘库](../Bazzite虚拟机部署/Steam硬盘库.md) — Linux 客户机直通盘案例
 - [Flirc遥控开关机](../Flirc遥控开关机.md) — PVE API 遥控开机/关机方案

@@ -2,7 +2,7 @@
 
 > 通用性:USB 直通姿势适用于任意 USB 设备;Xbox 无线适配器(`045e:02fe`)为完整案例
 > **脚本化**:挂载/移除可用 [Scripts/attach-usb.sh](Scripts/attach-usb.sh)(--vidpid,attach|detach)
-> 实测环境:PVE 9.2;Xbox 无线适配器 + Series X|S 手柄;Windows 与 Linux(Bazzite)双客户机经验
+> 实测环境:PVE 9.2;Xbox 无线适配器 + Series X|S 手柄;Windows 与 Linux 双客户机经验
 > 关联:显卡直通见 [显卡直通.md](显卡直通.md),硬盘直通见 [硬盘直通.md](硬盘直通.md)
 
 ---
@@ -51,7 +51,7 @@ qm config <vmid> | grep usb
 
 ### Linux 客户机(xone/xow 驱动)深度排错
 
-> 案例背景:2026-06 实测于 Bazzite(该方案已退役),排错链路对任何 Linux 桌面客机通用。
+> 案例背景:Linux 桌面客户机实测(xone/xow 驱动),排错链路对任何 Linux 客机通用。
 > 典型症状:驱动已加载(`lsmod` 有 xone_dongle)、设备已绑定,但 `/sys/class/xone/` 不存在、无法进入配对。根因是**固件加载链断裂**——SELinux 阻止 → 固件文件缺失/路径不对 → 驱动初始化失败,常叠加宿主驱动抢占。
 
 **链路 ① 宿主禁用 mt76 冲突驱动(PVE 宿主执行)**
@@ -167,4 +167,4 @@ LED 快闪后按住手柄顶部配对键即可连接。
 
 - [Windows虚拟机部署/Windows10-11虚拟机部署指南.md](Windows虚拟机部署/Windows10-11虚拟机部署指南.md) — 完整 Windows 部署流程
 - [显卡直通.md](显卡直通.md) / [硬盘直通.md](硬盘直通.md)
-- [Bazzite虚拟机部署/Steam硬盘库.md](Bazzite虚拟机部署/Steam硬盘库.md) — Linux 客户机直通盘使用案例
+- [Bazzite虚拟机部署/](Bazzite虚拟机部署/) — Linux 客机(Bazzite)部署与手柄使用

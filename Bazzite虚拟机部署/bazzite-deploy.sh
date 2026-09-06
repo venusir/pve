@@ -7,8 +7,7 @@
 # 创建(Linux 客机,无 TPM/Secure Boot 需求):
 #   q35 + OVMF(UEFI,不预置 Secure Boot 密钥)+ host CPU + VirtIO SCSI
 #   + VirtIO 网卡 + Bazzite ISO 光驱
-# 注:直通设备接入不在此脚本——装完系统后用 Scripts/attach-all.sh(客机无关)
-#    (该脚本与客机系统无关,名字为历史遗留)
+# 注:直通设备接入不在此脚本——装完系统后用 Scripts/attach-all.sh(与客机无关)
 #
 # 安全承诺:VMID 被占用拒绝创建;不执行任何删除操作
 #

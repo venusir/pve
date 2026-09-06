@@ -154,5 +154,5 @@ fi
 echo
 log "初始化完成。下一步:"
 echo "  1. 重启或注销,进入桌面模式:Steam → 设置 → 存储 → 添加 $MOUNT 为游戏库"
-echo "     (完整步骤参考同目录 Steam硬盘库.md)"
+echo "     (详细步骤见 Bazzite部署指南.md §7.2.1)"
 echo "  2. 游戏库目录建议:先手动建 $MOUNT/SteamLibrary 再添加"

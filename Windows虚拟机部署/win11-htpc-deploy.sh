@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
-# win11-htpc-deploy.sh —— PVE 一键创建 Win11 客厅 HTPC 虚拟机(建机阶段)
+# win11-htpc-deploy.sh —— PVE 一键创建 Windows 11 虚拟机(建机阶段)
 #
-# 适用:Proxmox VE 8.x/9.x,配合 Win11客厅HTPC.md(第 4 节)使用
+# 适用:Proxmox VE 8.x/9.x,配合 Windows10-11虚拟机部署指南.md(第 4 节)使用
 #
 # 本脚本创建(不包含系统安装后的直通接入,那一步由 Scripts/attach-all.sh 负责):
 #   q35 + OVMF(UEFI) + Secure Boot(pre-enrolled keys) + TPM 2.0

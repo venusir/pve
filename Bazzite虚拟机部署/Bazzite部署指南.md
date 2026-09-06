@@ -1,9 +1,8 @@
 # PVE 部署 Bazzite Deck 游戏虚拟机指南
 
-> 存档日期:2026-09-05(重建版;原 Bazzite 游戏机 2026-06 部署、2026-09 退役)
 > 适用:PVE 8.x/9.x;**KVM 全虚拟化**(非 LXC——Bazzite 是完整桌面 OS,共享宿主内核的容器无法承载,显卡独占直通亦仅 KVM 支持)
 > 实测环境:i3-12100 + RX 6650 XT(03:00.0/03:00.1)+ Xbox 无线适配器(`045e:02fe`)+ WD 1TB 直通盘 + PVE 9.2
-> 版本:Bazzite **Deck 游戏版**(`bazzite-deck-stable-live-amd64.iso`,gamescope 手柄优先,与旧 Bazzite 时代一致)
+> 版本:Bazzite **Deck 游戏版**(`bazzite-deck-stable-live-amd64.iso`,gamescope 手柄优先)
 
 ```
 前置核对(§2)→ 建机(§3,脚本)→ noVNC 安装(§4)→ sshd 与基础配置(§5)
@@ -16,7 +15,6 @@
 
 - 目标:客厅/电视旁的 Bazzite 游戏虚拟机——6650 XT 直通出画面、Xbox 手柄无线游玩、WD 1TB 直通为 Steam 游戏库
 - **画面承载**:Bazzite 官方仅支持"物理显示器"或 **HDMI/DP 假负载**(虚拟显示驱动不受支持)。本方案以**电视物理直连**为主;若需电视关闭时串流等场景,买一个 HDMI 假负载插在 6650 XT 上即可
-- 此前尝试的"Win11 兼顾影音"方案已放弃(桌面网页与遥控交互不兼容),见 [Windows虚拟机部署/Windows10-11虚拟机部署指南.md](../Windows虚拟机部署/Windows10-11虚拟机部署指南.md) §11;Bazzite 定位收敛为**纯游戏机**
 
 ## 2. 前置准备
 
@@ -36,7 +34,7 @@ lsusb | grep -i 045e                                      # Xbox 适配器在位
 ls -l /dev/disk/by-id/ata-WDC_WD10EZEX-08WN4A0_*          # WD 1TB by-id
 ```
 
-**设备空闲确认**:6650 XT / 适配器 / WD 盘当前不能被其他 VM 引用——若占用,先停用对应 VM 并移除其直通行(通用做法:在该 VM conf 中 `qm set <vmid> -delete hostpci0`、`-delete usb0`、`-delete scsi1` 等;具体被谁占用由你自己处理)。宿主 mt76 黑名单与 VFIO 配置沿用旧配置,无需重做(异常时回查 [显卡直通](../显卡直通.md) 第 2 节)。
+**设备空闲确认**:6650 XT / 适配器 / WD 盘当前不能被其他 VM 引用——若占用,先停用对应 VM 并移除其直通行(通用做法:在该 VM conf 中 `qm set <vmid> -delete hostpci0`、`-delete usb0`、`-delete scsi1` 等;具体被谁占用由你自己处理)。宿主 mt76 黑名单与 VFIO 直通配置需已就位;已配置过则无需重做(异常时回查 [显卡直通](../显卡直通.md) 第 2 节)。
 
 ### 2.3 前置脚本
 
@@ -65,7 +63,7 @@ GUI 手动对照关键项:Machine=q35、BIOS=OVMF(UEFI)、磁盘 VirtIO SCSI、C
 
 ## 5. 首启与远程管理(先不开显卡直通!)
 
-首启默认进 gamescope 游戏模式;noVNC 分辨率低属正常。基础配置建议在游戏模式先做,操作不了就按旧经验进 TTY/桌面:
+首启默认进 gamescope 游戏模式;noVNC 分辨率低属正常。基础配置建议在游戏模式先做,操作不了就切 TTY/桌面:
 
 ```bash
 # 切 TTY(游戏模式卡住/黑屏时):Ctrl+Alt+F3 → 用安装时创建的用户登录
@@ -125,14 +123,30 @@ systemctl --user status gamescope-session-plus@steam.service   # active 即正�
 
 ### 7.2 游戏盘(WD 1TB)初始化 —— ⚠️ 数据清空点
 
-盘当前为 NTFS(Windows 时期遗留)。Bazzite 游戏库建议 ext4:
+盘当前为 NTFS,Bazzite 游戏库建议格式化 ext4:
 
 ```bash
 # Bazzite 内以 sudo 执行(格式化需输 YES;已格式化过则加 --skip-format)
 sudo ./bazzite-init.sh --disk /dev/disk/by-id/ata-WDC_WD10EZEX-08WN4A0_...
 ```
 
-脚本完成:ext4 格式化(显式确认)→ 挂载 `/var/mnt/games`(fstab UUID 持久化)→ 属主交给你的用户 → sshd → Flatpak Steam 授权。随后进桌面模式把库加进 Steam(设置 → 存储 → 添加 `/var/mnt/games` 下新建的 SteamLibrary;完整步骤见 [Steam硬盘库.md](Steam硬盘库.md))。
+脚本完成:ext4 格式化(显式确认)→ 挂载 `/var/mnt/games`(fstab UUID 持久化)→ 属主交给你的用户 → sshd → Flatpak Steam 授权。
+
+随后进桌面模式把库加进 Steam,步骤见 **7.2.1**。
+
+#### 7.2.1 桌面模式添加 Steam 游戏库(Flatpak + 手动加库)
+
+大屏(游戏模式)UI 隐藏了手动添加库入口,Steam 又以 Flatpak 沙盒运行——首次需在**桌面模式**加库,一次配置永久生效:
+
+1. **回退摘卡**(若显卡已直通;命令见 [显卡直通](../显卡直通.md) §6)→ 重启后用 noVNC + 键鼠操作。摘卡后 gamescope 无硬件加速可能卡死:按 **Ctrl+Alt+F3** 进 TTY 登录 → `sudo steamos-session-select desktop` 进桌面;
+2. **授权挂载目录**(bazzite-init 已对 `/var/mnt/games` 执行过,仅手动换过挂载路径时重跑):
+   ```bash
+   flatpak override --user --filesystem=/var/mnt/games com.valvesoftware.Steam
+   ```
+3. 桌面模式打开 Steam → 设置 → 存储 → **+ 添加库** →「让我在另一个位置选择」→ 在 `/var/mnt/games` 下新建并选中 `SteamLibrary` → 添加;
+4. 完成加库后恢复直通(`qm stop` → 挂回 hostpci0 + `vga none` → 启动),回游戏模式即可看到新库。
+
+> 桌面模式想用手柄操作:右摇杆=鼠标、RT/LT=左右键、A=回车(需 Steam 在运行);手柄异常直接改用 noVNC 键鼠。
 
 ### 7.3 Xbox 手柄
 
@@ -188,10 +202,9 @@ ls /sys/class/xone/
 ## 相关文档
 
 - [README.md](README.md) — 目录索引
-- [Steam硬盘库.md](Steam硬盘库.md) — 桌面模式添加直通盘为 Steam 库
 - [显卡直通](../显卡直通.md) / [硬盘直通](../硬盘直通.md) / [Xbox直通](../Xbox直通.md) — PVE 通用直通指南
 - [Flirc遥控开关机](../Flirc遥控开关机.md) — 遥控开关 VM
-- [Windows虚拟机部署/Windows10-11虚拟机部署指南.md](../Windows虚拟机部署/Windows10-11虚拟机部署指南.md) — 另一客机系统参考(方案沿革 §11)
+- [Windows虚拟机部署/Windows10-11虚拟机部署指南.md](../Windows虚拟机部署/Windows10-11虚拟机部署指南.md) — 另一客机系统参考
 
 ## 参考来源
 
