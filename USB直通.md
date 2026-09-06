@@ -1,22 +1,23 @@
-# PVE USB 设备直通通用指南(Xbox 无线适配器为例)
+# PVE USB 设备直通通用指南(Xbox 无线适配器完整案例)
 
-> 通用性:USB 直通姿势适用于任意 USB 设备;Xbox 无线适配器(`045e:02fe`)为完整案例
-> **脚本化**:挂载/移除可用 [Scripts/attach-usb.sh](Scripts/attach-usb.sh)(--vidpid,attach|detach)
+> 通用性:USB 直通姿势适用于任意 USB 设备;Xbox 无线适配器(`045e:02fe`)为完整案例(§3)
+> **脚本化**:挂载/移除可用 [Scripts/attach-usb.sh](Scripts/attach-usb.sh)(省略 --vidpid 时自动列选宿主设备;attach|detach)
 > 实测环境:PVE 9.2;Xbox 无线适配器 + Series X|S 手柄;Windows 与 Linux 双客户机经验
 > 关联:显卡直通见 [显卡直通.md](显卡直通.md),硬盘直通见 [硬盘直通.md](硬盘直通.md)
 
 ---
 
-## 1. USB 直通通用姿势
+## 1. USB 直通通用姿势(任意 USB 设备)
 
 ```bash
 # 1) 宿主确认设备在(记下 VID:PID)
-lsusb | grep -i microsoft
+lsusb
 # 例:Bus 001 Device 010: ID 045e:02fe Microsoft Corp. Xbox Wireless Adapter for Windows
+#     ↑ Xbox 无线适配器是本机最常用案例,其特殊性见 §3
 
 # 2) 挂给虚拟机(VID:PID 方式最稳,端口号会漂移)
-qm set <vmid> -usb0 host=045e:02fe            # 默认走 xHCI(USB3 通路)
-qm set <vmid> -usb0 host=045e:02fe,usb3=0     # 强制 USB2 通路(部分设备/Linux 客户机需要)
+qm set <vmid> -usb0 host=<VID:PID>            # 默认走 xHCI(USB3 通路)
+qm set <vmid> -usb0 host=<VID:PID>,usb3=0     # 强制 USB2 通路(部分设备/Linux 客户机需要)
 
 # 3) 验证
 qm config <vmid> | grep usb
@@ -26,9 +27,27 @@ qm config <vmid> | grep usb
 - USB/PCI 配置改动后**必须完全关机再开机**(重启不生效)
 - 同一 USB 设备**不能同时配给两个 VM**(占用冲突)
 - 设备物理拔插后,VM 内可能失联 → 冷启动恢复
-- 宿主驱动可能"抢走"已直通设备:即使直通成功,宿主已加载的驱动(mt76 等)也会先占用 → 见 §4
+- **宿主驱动可能"抢走"已直通设备**:即使直通成功,宿主已加载的驱动也会先占用,表现为客户机里看不到设备 → 见 §2;宿主侧黑名单处理示例见 §3.4
+- 键鼠/手柄等输入设备经 **RDP 不转发输入**,须在控制台会话(物理显示或 `mstsc /admin`)使用
 
-## 2. Xbox 无线适配器型号与配对
+## 2. 通用排错流程(客户机看不到设备)
+
+```
+设备在客户机里看不到?
+  ├─ 宿主 lsusb 有设备吗? 没有 → 物理连接问题;或宿主驱动抢占(黑名单示例见 §3.4)
+  ├─ conf 里 usbN 在吗?       没有 → 重新挂载(§1)
+  └─ 都在 → VM 冷启动 → 客户机 lsusb / 设备管理器复查
+仍不行?
+  ├─ 软重置设备:usbreset <VID:PID>(需 usbutils)
+  ├─ 物理拔插 10 秒 / 换 USB 口(避开 USB3 设备射频干扰)
+  └─ 设备带专属客户机驱动/固件(无线手柄适配器、数位板等)→ 查该设备案例,见 §3
+```
+
+## 3. 案例:Xbox 无线适配器(手柄)直通
+
+> 通用挂载与排错姿势见 §1-2;本栏目只讲该设备的**特殊性**——型号识别、配对、客户机驱动链路。适配器本质是普通 USB 设备(枚举 `045e:02fe` / `045e:02e6`),无任何特殊挂载参数。
+
+### 3.1 型号与配对
 
 | 型号 | USB ID | 说明 |
 | --- | --- | --- |
@@ -41,15 +60,14 @@ qm config <vmid> | grep usb
 
 **固件与电池提醒**:配对失败先排除两件事——①换全新碱性电池(电压不足表现为"能闪连不上");②固件过旧(Windows 下用 Xbox Accessories 有线刷手柄固件、可选更新装适配器驱动包)。
 
-## 3. 客户机差异与完整排错
+**配对失败的排查顺序**:换电池 → 确认按的是顶部小圆钮(不是 logo 键)→ 换 USB2 口/远离 USB3 设备(射频干扰)→ 冷启动 / 去掉 `usb3=0` 换通路 → Windows 侧:可选更新/Xbox Accessories 更新固件 → Linux 侧:xone 固件链(§3.3)→ **裸机 A/B 测试**:适配器插真 Windows 电脑试配——能配 = VM 链路问题,不能配 = 固件/硬件问题(数据线刷手柄固件或换适配器)。
 
-### Windows 客户机
+### 3.2 Windows 客户机细节
 
 - 原生免驱;设备出现在设备管理器 → **网络适配器**分类(正常!它按网络设备枚举,不提供网络功能)
-- 配对/固件:见 §2;Xbox Accessories(微软商店)识别与更新
-- RDP 会话不转发手柄输入——测试/使用须在控制台会话(物理显示或 `mstsc /admin`)
+- 配对/固件:见 §3.1;Xbox Accessories(微软商店)识别与更新
 
-### Linux 客户机(xone/xow 驱动)深度排错
+### 3.3 Linux 客户机(xone/xow 驱动)深度排错
 
 > 案例背景:Linux 桌面客户机实测(xone/xow 驱动),排错链路对任何 Linux 客机通用。
 > 典型症状:驱动已加载(`lsmod` 有 xone_dongle)、设备已绑定,但 `/sys/class/xone/` 不存在、无法进入配对。根因是**固件加载链断裂**——SELinux 阻止 → 固件文件缺失/路径不对 → 驱动初始化失败,常叠加宿主驱动抢占。
@@ -140,30 +158,12 @@ LED 快闪后按住手柄顶部配对键即可连接。
 | SELinux 静默阻止 | `Permission firmware_load` 不会显示在 dmesg 的 xone 过滤里 |
 | ErP Ready 治卡死 | 适配器休眠/重启后不工作的社区验证终极方案 |
 
-## 4. 宿主侧冲突与卡死(速查)
+### 3.4 宿主侧冲突与卡死(速查)
 
-- **mt76 抢占**:枚举正常但客机拿不到设备 → 宿主黑名单(mt76 全家桶,命令见 §3 Linux 链路①)
-- **适配器卡死**:拔插 10 秒 / `usbreset 045e:02fe` / BIOS ErP Ready(§3 链路④)
+- **mt76 抢占**:枚举正常但客机拿不到设备 → 宿主黑名单(mt76 全家桶,命令见 §3.3 链路①)
+- **适配器卡死**:拔插 10 秒 / `usbreset 045e:02fe` / BIOS ErP Ready(§3.3 链路④)
 
-## 5. 通用排错流程
-
-```
-设备在客户机里看不到?
-  ├─ 宿主 lsusb 有设备吗? 没有 → 物理/宿主驱动问题(§4)
-  ├─ conf 里 usb0 在吗?    没有 → 重新挂载(§1)
-  └─ 都在 → VM 冷启动 → 设备管理器/lsusb 复查
-手柄配不上?
-  ├─ 确认按的是顶部配对键(§2)!logo 键是开关机
-  ├─ 换新电池(电压不足表现为"能闪连不上")
-  ├─ 换 USB2 口/远离 USB3 设备(射频干扰)
-  ├─ 冷启动 / 去掉 usb3=0 换通路
-  ├─ Windows 侧:可选更新/Xbox Accessories 更新固件
-  ├─ Linux 侧:按 §3 三链路排查(xone 固件链)
-  └─ 裸机 A/B 测试:适配器插真 Windows 电脑试配——能配=VM 链路问题;
-     不能配=固件/硬件问题(数据线刷手柄固件或换适配器)
-```
-
-## 6. 关联文档
+## 4. 关联文档
 
 - [Windows虚拟机部署/Windows10-11虚拟机部署指南.md](Windows虚拟机部署/Windows10-11虚拟机部署指南.md) — 完整 Windows 部署流程
 - [显卡直通.md](显卡直通.md) / [硬盘直通.md](硬盘直通.md)

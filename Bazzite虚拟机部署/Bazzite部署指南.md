@@ -91,7 +91,7 @@ bash /root/scripts/attach-all.sh --vmid <vmid> --dry-run    # 审:显卡/音频/
 bash /root/scripts/attach-all.sh --vmid <vmid>              # 输 Y;交互选 WD 1TB
 ```
 
-> attach-all 组合执行:显卡+音频(x-vga=1)、显示 none、Xbox 适配器(默认 VID:PID 045e:02fe)、直通盘、自启——**客机无关**,Windows/Linux 通用。按需单挂某设备用原语脚本。
+> attach-all 组合执行:显卡+音频(x-vga=1)、显示 none、Xbox 适配器(--vidpid 省略时交互选择)、直通盘、自启——**客机无关**,Windows/Linux 通用。按需单挂某设备用原语脚本。
 
 **成功标志**(`qm config <vmid>`):
 
@@ -156,7 +156,7 @@ sudo ./bazzite-init.sh --disk /dev/disk/by-id/ata-WDC_WD10EZEX-08WN4A0_...
 ls /sys/class/xone/        # 出现 dongle0 = 驱动正常
 ```
 
-配对:适配器圆键 → 手柄**顶部小圆钮**(不是 logo 键)。异常时按 [USB直通](../USB直通.md) §3 Linux 链路排错(宿主 mt76 黑名单沿用;若固件/SELinux 问题,Bazzite 无 SELinux 默认,主要查固件路径)。
+配对:适配器圆键 → 手柄**顶部小圆钮**(不是 logo 键)。异常时按 [USB直通](../USB直通.md) §3.3 Linux 链路排错(宿主 mt76 黑名单沿用;若固件/SELinux 问题,Bazzite 无 SELinux 默认,主要查固件路径)。
 
 ### 7.4 显示细节(可选)
 
@@ -177,7 +177,7 @@ ls /sys/class/xone/        # 出现 dongle0 = 驱动正常
 | noVNC 黑屏 | 正常!画面在电视;需要控制台时用回退法([显卡直通](../显卡直通.md) §6) |
 | 电视无画面 | 线/输入源 → 回退法进系统查驱动/会话日志 |
 | 游戏模式黑屏卡住 | Ctrl+Alt+F3 进 TTY;`steamos-session-select desktop` |
-| 手柄不识别 | 宿主 lsusb 确认 → dongle0 检查 → [USB直通](../USB直通.md) Linux 链路 |
+| 手柄不识别 | 宿主 lsusb 确认 → dongle0 检查 → [USB直通](../USB直通.md) §3.3 Linux 链路 |
 | 游戏盘不显示 | 确认 scsi1 在 conf;SSH 里 `lsblk`;bazzite-init 挂载步骤重跑(--skip-format) |
 | 分辨率不对 | 电视 EDID;gamescope -W/-H 参数(§7.4) |
 | 关机变重启/挂起异常 | 直通机勿用睡眠;彻底关机走宿主 `qm shutdown` |

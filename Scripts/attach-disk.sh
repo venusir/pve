@@ -47,6 +47,8 @@ trap 'rc=$?; echo "[退出] $(date "+%F %T") 状态 $rc"' EXIT
 [[ -n "$VMID" ]] || die "缺少 --vmid"
 CONF="/etc/pve/qemu-server/$VMID.conf"
 [[ -e "$CONF" ]] || die "VMID $VMID 配置文件不存在"
+STATUS=$(qm status "$VMID" 2>/dev/null | awk '{print $2}' || true)
+[[ "$STATUS" == "running" ]] && die "VM $VMID 运行中——直通配置要求完全关机后再开机,请先 qm stop $VMID"
 
 find_disk_line() {  # 按真实设备路径归一化匹配 conf 中的直通行(by-id 与 sdX 等价)
     local line path tgt
@@ -76,22 +78,46 @@ if [[ "$ACTION" == "detach" ]]; then
     exit 0
 fi
 
-# 交互选择候选盘(未挂载整盘,排除宿主在用)
+# 交互选择候选盘(未挂载整盘,排除宿主在用;标注已被其他 VM 直通的盘)
 if [[ -z "$DISK" ]]; then
+    # 收集其他 VM conf 中已直通的真实盘路径(by-id 与 sdX 归一化对比)
+    busy_paths=()
+    for f in /etc/pve/qemu-server/*.conf; do
+        [[ -f "$f" ]] || continue
+        [[ "$f" == "$CONF" ]] && continue
+        while IFS= read -r line; do
+            path=$(echo "$line" | sed -E 's/^[a-z0-9]+[0-9]*: ([^,]+).*/\1/')
+            [[ "$path" == /dev/* ]] && busy_paths+=("$(readlink -f "$path" 2>/dev/null || echo "$path")")
+        done < <(grep -E '^(scsi|sata|ide|virtio)[0-9]+: /dev/' "$f" || true)
+    done
+    is_busy() {
+        local tgt="$1" p
+        for p in "${busy_paths[@]}"; do [[ "$p" == "$tgt" ]] && return 0; done
+        return 1
+    }
     echo "[信息] 候选整盘(排除宿主已挂载):"
     candidates=()
+    busy_flags=()
     i=0
     for d in /dev/disk/by-id/ata-* /dev/disk/by-id/nvme-* /dev/disk/by-id/usb-*; do
         [[ -e "$d" ]] || continue
         case "$d" in *-part*) continue ;; esac
         findmnt -n "$d" >/dev/null 2>&1 && continue
         candidates+=("$d")
-        printf '  [%d] %s (%s)\n' "$i" "$d" "$(lsblk -dno SIZE "$d" 2>/dev/null || echo ?)"
+        b=0; is_busy "$(readlink -f "$d" 2>/dev/null || echo "$d")" && b=1
+        busy_flags+=("$b")
+        model=$(lsblk -dno MODEL "$d" 2>/dev/null | xargs || true)   # 可含空格,统一去首尾空白
+        serial=$(lsblk -dno SERIAL "$d" 2>/dev/null | xargs || true)
+        size=$(lsblk -dno SIZE "$d" 2>/dev/null || echo ?)
+        name="$model${serial:+ [$serial]}"
+        [[ -z "$name" ]] && name=$(basename "$d")                    # 兜底:无型号信息时用 by-id 短名
+        printf '  [%d] %s (%s)%s\n' "$i" "$name" "$size" "$([ "$b" -eq 1 ] && echo ' ← 已被其他 VM 直通')"
         i=$((i + 1))
     done
     [[ ${#candidates[@]} -gt 0 ]] || die "无候选盘"
     read -r -p "输入编号(其他键退出): " sel
     if [[ "$sel" =~ ^[0-9]+$ && $sel -lt ${#candidates[@]} ]]; then
+        [[ ${busy_flags[$sel]} -eq 1 ]] && die "该盘已被其他 VM 直通,拒绝双挂(数据安全)"
         DISK="${candidates[$sel]}"
     else
         echo "已取消。"; exit 0
@@ -109,5 +135,5 @@ echo "将执行: scsi${SCSI_IDX} = $DISK(整盘直通,不格式化)"
 [[ $DRY_RUN -eq 1 ]] && { echo "[信息] dry-run 结束。"; exit 0; }
 read -r -p "确认接入?输入 Y 继续: " ans
 [[ "$ans" == "Y" || "$ans" == "y" ]] || { echo "已取消。"; exit 0; }
-qm set "$VMID" -scsi${SCSI_IDX} "$DISK"
+qm set "$VMID" "-scsi${SCSI_IDX}" "$DISK"
 log "已挂载 scsi${SCSI_IDX};客户机内初始化(格式化/挂载)见对应客机 init 脚本"

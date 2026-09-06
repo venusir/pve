@@ -8,14 +8,15 @@
 #
 # 用法:
 #   ./attach-all.sh --vmid 200 --dry-run                 # 先审
-#   ./attach-all.sh --vmid 200 --vidpid 045e:02fe        # 接入(Xbox 适配器默认例子)
+#   ./attach-all.sh --vmid 200                           # 接入(显卡自动;USB/盘交互选择)
+#   ./attach-all.sh --vmid 200 --vidpid 045e:02fe        # USB 按 VID:PID 直连(Xbox 适配器例子)
 #   ./attach-all.sh --vmid 200 --skip-usb --skip-disk    # 只做显卡+显示+自启
 #   ./attach-all.sh --vmid 200 --no-startup
 # =============================================================================
 set -euo pipefail
 
 VMID=""
-VIDPID="045e:02fe"
+VIDPID=""   # 留空时 USB 步骤交互列选(显式 --vidpid 则直连)
 SKIP_GPU=0
 SKIP_USB=0
 SKIP_DISK=0
@@ -43,7 +44,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "[启动] $(date '+%F %T') | $(basename "$0") | VMID=${VMID:-<未指定>}"
-echo "[启动] 组件: GPU${SKIP_GPU:+[跳过]} / USB${SKIP_USB:+[跳过]}(VID:PID=$VIDPID) / DISK${SKIP_DISK:+[跳过]} / vga none / startup${NO_STARTUP:+[跳过]}"
+echo "[启动] 组件: GPU${SKIP_GPU:+[跳过]} / USB${SKIP_USB:+[跳过]}${VIDPID:+($VIDPID)} / DISK${SKIP_DISK:+[跳过]} / vga none / startup${NO_STARTUP:+[跳过]}"
+[[ $SKIP_USB -eq 0 && -z "$VIDPID" ]] && echo "[启动] USB 步骤将交互列选宿主设备"
 if [[ $DEBUG -eq 1 ]]; then PS4='+[${LINENO}] '; set -x; fi
 trap 'echo "[失败] 终止于第 $LINENO 行: $BASH_COMMAND(状态 $?)" >&2' ERR
 trap 'rc=$?; echo "[退出] $(date "+%F %T") 状态 $rc"' EXIT
@@ -61,12 +63,14 @@ SELF_DIR=$(cd "$(dirname "$0")" && pwd)
 COMMON=()
 [[ $DRY_RUN -eq 1 ]] && COMMON+=(--dry-run)
 [[ $DEBUG -eq 1 ]] && COMMON+=(--debug)
+USB_ARGS=(--vmid "$VMID" "${COMMON[@]}")
+[[ -n "$VIDPID" ]] && USB_ARGS+=(--vidpid "$VIDPID")
 
 # 先汇总干跑:每个原语 dry-run 一轮,再统一确认执行
 if [[ $DRY_RUN -eq 1 ]]; then
     echo "=== 各组件 dry-run ==="
     [[ $SKIP_GPU -eq 0 ]] && bash "$SELF_DIR/attach-gpu.sh" --vmid "$VMID" "${COMMON[@]}"
-    [[ $SKIP_USB -eq 0 ]] && bash "$SELF_DIR/attach-usb.sh" --vmid "$VMID" --vidpid "$VIDPID" "${COMMON[@]}"
+    [[ $SKIP_USB -eq 0 ]] && bash "$SELF_DIR/attach-usb.sh" "${USB_ARGS[@]}"
     [[ $SKIP_DISK -eq 0 ]] && bash "$SELF_DIR/attach-disk.sh" --vmid "$VMID" "${COMMON[@]}"
     echo "=== 组合附加项 ==="
     echo "  vga none(画面走直通卡);startup order=1$([ $NO_STARTUP -eq 1 ] && echo '(跳过)')"
@@ -83,7 +87,7 @@ mkdir -p /root/backup
 cp "$CONF" "/root/backup/vm-$VMID-attach-$TS.conf" && log "conf 已备份:/root/backup/vm-$VMID-attach-$TS.conf"
 
 [[ $SKIP_GPU -eq 0 ]] && bash "$SELF_DIR/attach-gpu.sh" --vmid "$VMID" "${COMMON[@]}"
-[[ $SKIP_USB -eq 0 ]] && bash "$SELF_DIR/attach-usb.sh" --vmid "$VMID" --vidpid "$VIDPID" "${COMMON[@]}"
+[[ $SKIP_USB -eq 0 ]] && bash "$SELF_DIR/attach-usb.sh" "${USB_ARGS[@]}"
 [[ $SKIP_DISK -eq 0 ]] && bash "$SELF_DIR/attach-disk.sh" --vmid "$VMID" "${COMMON[@]}"
 
 log "显示置 none(画面完全走直通卡)"

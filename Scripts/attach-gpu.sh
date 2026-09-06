@@ -7,7 +7,7 @@
 # 通用直通细节与排错见 PVE/显卡直通.md
 #
 # 用法:
-#   ./attach-gpu.sh --vmid 200 attach                  # 默认动作,可省略
+#   ./attach-gpu.sh --vmid 200 attach                  # 默认动作;单卡自动,多卡交互列选
 #   ./attach-gpu.sh --vmid 200 detach                  # 回退到 noVNC
 #   ./attach-gpu.sh --vmid 200 --gpu 03:00.0           # 非自动检测型号时指定
 #   ./attach-gpu.sh --vmid 200 --no-xvga               # 不作为主显示
@@ -51,21 +51,87 @@ trap 'rc=$?; echo "[退出] $(date "+%F %T") 状态 $rc"' EXIT
 [[ -n "$VMID" ]] || die "缺少 --vmid"
 CONF="/etc/pve/qemu-server/$VMID.conf"
 [[ -e "$CONF" ]] || die "VMID $VMID 配置文件不存在"
+STATUS=$(qm status "$VMID" 2>/dev/null | awk '{print $2}' || true)
+[[ "$STATUS" == "running" ]] && die "VM $VMID 运行中——直通配置要求完全关机后再开机,请先 qm stop $VMID"
 
-detect_gpu() {
-    lspci -nn | awk '/\[1002:73ef\]/{print $1; exit}' 2>/dev/null || true
+list_vfio_gpus() {   # 被 vfio-pci 接管的显示类设备(PCI 地址列表)
+    local addr
+    while read -r addr; do
+        [[ -n "$addr" ]] || continue
+        lspci -nnk -s "$addr" 2>/dev/null | grep -q 'Kernel driver in use: vfio-pci' && echo "$addr"
+    done < <(lspci -nn | awk '/VGA compatible controller|Display controller|3D controller/{print $1}')
 }
-detect_audio() {
+gpu_desc() { lspci -nn -s "$1" 2>/dev/null | sed -E \
+    's/^[0-9a-f:.]+ //;
+     s/^VGA compatible controller: //; s/^Display controller: //; s/^3D controller: //;
+     s/\(rev [0-9a-f]+\)//; s/\[[0-9a-fA-F]{4}:[0-9a-fA-F]{4}\]//g;
+     s/[[:space:]]+/ /g' | xargs; }
+find_slot_audio() {  # 同槽位(bus:slot)的音频功能 —— 同卡 HDMI/DP 音频
+    local slot=${1%.*}
+    lspci -nn | awk -v s="$slot" '$1 ~ "^" s "[.][0-9a-f]+$" && /Audio device/{print $1; exit}'
+}
+detect_audio() {     # 兜底:全局按 AUDIO_ID(默认 1002:ab28)查找音频功能
     lspci -nn | awk -v id="$AUDIO_ID" '$0 ~ "\\[" id "\\]" {print $1; exit}' 2>/dev/null || true
 }
+is_igpu() {          # Intel 集成显卡(HD/UHD/Iris 型号;独立 Arc 不含这些字样)
+    lspci -nn -s "$1" 2>/dev/null | grep -qiE 'Intel Corporation.*(UHD Graphics|HD Graphics|Iris|Graphics Adapter)'
+}
+
+# 已被其他 VM 直通的 PCI 地址映射(hostpciN 首字段,去 0000: 前缀归一化)
+declare -A busy_vm=()
+for f in /etc/pve/qemu-server/*.conf; do
+    [[ -f "$f" ]] || continue
+    [[ "$f" == "$CONF" ]] && continue
+    vmid=${f##*/}; vmid=${vmid%.conf}
+    while IFS= read -r line; do
+        addr=$(echo "$line" | sed -nE 's/^hostpci[0-9]+: ([0-9a-fA-F:.]+).*/\1/p')
+        [[ -n "$addr" ]] && busy_vm["${addr#0000:}"]="$vmid"
+    done < <(grep -E '^hostpci[0-9]+: ' "$f" || true)
+done
 
 if [[ "$ACTION" == "attach" ]]; then
-    [[ -z "$GPU_ADDR" ]] && GPU_ADDR=$(detect_gpu)
-    [[ -n "$GPU_ADDR" ]] || die "未自动检测到显卡,请 --gpu <地址> 指定"
+    grep -q '^hostpci0:' "$CONF" && die "conf 已有 hostpci0($(grep '^hostpci0:' "$CONF" | head -1))——如需换卡请先 detach"
+    # 显卡:未指定 --gpu 时自动检测(vfio 接管);检测到多张时交互列选
+    if [[ -z "$GPU_ADDR" ]]; then
+        mapfile -t gpus < <(list_vfio_gpus)
+        if [[ ${#gpus[@]} -eq 0 ]]; then
+            die "未检测到被 vfio-pci 接管的显卡,请先配置 VFIO(见 显卡直通.md 第 2 节),或 --gpu <地址> 指定"
+        elif [[ ${#gpus[@]} -eq 1 ]]; then
+            GPU_ADDR="${gpus[0]}"
+        else
+            echo "[信息] 检测到多张 vfio 显卡,请选择:"
+            for k in "${!gpus[@]}"; do
+                busy_note=""
+                [[ -n "${busy_vm[${gpus[$k]#0000:}]+x}" ]] && busy_note="(已被 VM ${busy_vm[${gpus[$k]#0000:}]} 占用)"
+                printf '  [%d] %s %s%s\n' "$k" "${gpus[$k]}" "$(gpu_desc "${gpus[$k]}")" "${busy_note:+ $busy_note}"
+            done
+            read -r -p "输入编号(其他键退出): " sel
+            [[ "$sel" =~ ^[0-9]+$ && $sel -lt ${#gpus[@]} ]] || { echo "已取消。"; exit 0; }
+            GPU_ADDR="${gpus[$sel]}"
+        fi
+    fi
+    lspci -nn -s "$GPU_ADDR" >/dev/null 2>&1 || die "PCI 地址无效: $GPU_ADDR"
     if ! lspci -nnk -s "$GPU_ADDR" 2>/dev/null | grep -q 'vfio-pci'; then
         die "显卡 $GPU_ADDR 未被 vfio-pci 接管,请先配置(见 显卡直通.md 第 2 节)"
     fi
-    AUDIO_ADDR=$(detect_audio)
+    # 音频:优先同槽位音频功能(同卡 HDMI/DP 音频),找不到再全局按 AUDIO_ID 查
+    AUDIO_ADDR=$(find_slot_audio "$GPU_ADDR")
+    [[ -z "$AUDIO_ADDR" ]] && AUDIO_ADDR=$(detect_audio)
+    # 归属防护:显卡/音频已被其他 VM 直通则拒绝(hostpci 设备只能归一个 VM)
+    if [[ -n "${busy_vm[${GPU_ADDR#0000:}]+x}" ]]; then
+        die "显卡 $GPU_ADDR 已被 VM ${busy_vm[${GPU_ADDR#0000:}]} 直通,先移除或选其他设备"
+    fi
+    if [[ -n "$AUDIO_ADDR" && -n "${busy_vm[${AUDIO_ADDR#0000:}]+x}" ]]; then
+        die "音频功能 $AUDIO_ADDR 已被 VM ${busy_vm[${AUDIO_ADDR#0000:}]} 直通,先移除"
+    fi
+    # 核显特别提醒
+    if is_igpu "$GPU_ADDR"; then
+        echo "⚠ [核显] $GPU_ADDR 为 Intel 集成显卡,直通注意:"
+        echo "    1. 宿主显示:若宿主无独显输出,直通后宿主将无画面(仅 Web/串口管理)"
+        echo "    2. x-vga=1 对核显兼容性差:客机黑屏时改跑 --no-xvga,客户机装 Intel 驱动后接管"
+        echo "    3. 核显 HDMI/DP 音频不在本卡槽位(走 PCH HD Audio 等),需另配音频直通"
+        echo "    4. 自动检测/候选列表没看到核显 = 未被 vfio-pci 接管,先加 vfio.conf 绑定(见 显卡直通.md §2)"
+    fi
     echo "将执行:"
     echo "  hostpci0 = $GPU_ADDR,pcie=1$([ $XVGA -eq 1 ] && echo ',x-vga=1')"
     [[ -n "$AUDIO_ADDR" ]] && echo "  hostpci1 = $AUDIO_ADDR,pcie=1(音频)" || echo "  (未检测到音频功能,跳过)"
