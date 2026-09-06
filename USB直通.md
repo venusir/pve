@@ -165,6 +165,6 @@ LED 快闪后按住手柄顶部配对键即可连接。
 
 ## 4. 关联文档
 
-- [Windows虚拟机部署/Windows10-11虚拟机部署指南.md](Windows虚拟机部署/Windows10-11虚拟机部署指南.md) — 完整 Windows 部署流程
+- [Windows虚拟机部署/Windows部署指南.md](Windows虚拟机部署/Windows部署指南.md) — 完整 Windows 部署流程
 - [显卡直通.md](显卡直通.md) / [硬盘直通.md](硬盘直通.md)
 - [Bazzite虚拟机部署/](Bazzite虚拟机部署/) — Linux 客机(Bazzite)部署与手柄使用

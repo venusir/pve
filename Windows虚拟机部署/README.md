@@ -6,7 +6,7 @@
 
 | 文件 | 说明 |
 | --- | --- |
-| [Windows10-11虚拟机部署指南.md](Windows10-11虚拟机部署指南.md) | ⭐ 唯一部署文档:主流程 + 踩坑表 + 命令速查(从部署直接开始看这篇) |
+| [Windows部署指南.md](Windows部署指南.md) | ⭐ 唯一部署文档:主流程 + 踩坑表 + 命令速查(从部署直接开始看这篇) |
 | [win11-htpc-deploy.sh](win11-htpc-deploy.sh) | 阶段 A:一键建机脚本(OVMF/TPM2.0/VirtIO 全参数) |
 | [attach-all.sh](../Scripts/attach-all.sh) | 阶段 B:一键接入直通设备(显卡/音频/USB/盘/自启;客机无关,含 gpu/usb/disk 原语) |
 

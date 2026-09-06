@@ -204,7 +204,7 @@ ls /sys/class/xone/
 - [README.md](README.md) — 目录索引
 - [显卡直通](../显卡直通.md) / [硬盘直通](../硬盘直通.md) / [USB直通](../USB直通.md) — PVE 通用直通指南
 - [Flirc遥控开关机](../Flirc遥控开关机.md) — 遥控开关 VM
-- [Windows虚拟机部署/Windows10-11虚拟机部署指南.md](../Windows虚拟机部署/Windows10-11虚拟机部署指南.md) — 另一客机系统参考
+- [Windows虚拟机部署/Windows部署指南.md](../Windows虚拟机部署/Windows部署指南.md) — 另一客机系统参考
 
 ## 参考来源
 

@@ -1,4 +1,4 @@
-# PVE 部署 Windows 10/11 虚拟机指南(单文档版)
+# PVE 部署 Windows 10/11 虚拟机指南
 
 > 适用:Proxmox VE 8.x/9.x;Windows 10 / Windows 11
 > 实测环境:i3-12100 + RX 6650 XT + PVE 9.2 + 两阶段脚本
@@ -51,6 +51,17 @@ scp .\Win11.iso root@<PVE-IP>:/var/lib/vz/template/iso/
 
 - **⚠️ ISO 目录里保留多个 Windows 镜像时,deploy 自动检测可能选错**——只留要用的那份,或用 `--win-iso` 显式指定
 
+### 3.3 virtio-win 驱动 ISO(装系统必需)
+
+用途:安装器里认盘(`vioscsi` 驱动,§5)与装完后的全量 VirtIO 驱动/QEMU Agent(§6)。
+
+- **方式一(默认,宿主联网)**:deploy 脚本在 ISO 目录找不到 `virtio-win*.iso` 时,自动从
+  `https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso`
+  下载(stable 版,约 600MB,**执行阶段才下**,dry-run 不触发);
+- **方式二(手动 / 离线 / 慢网)**:下载同名文件后 scp 到 `/var/lib/vz/template/iso/virtio-win.iso`
+  (文件名须以 `virtio-win` 开头供自动检测,或建机时 `--virtio-iso <文件名>` 显式指定);
+- **⚠️ 与系统镜像同理**:ISO 目录只留一份 virtio-win,多版本时自动检测会取错。
+
 ## 4. 阶段 A:一键建机
 
 ```bash
@@ -60,7 +71,7 @@ bash win11-htpc-deploy.sh              # 输 Y 创建
 
 创建内容:q35 + OVMF(UEFI)+ Secure Boot 预置密钥 + TPM 2.0 + host CPU + VirtIO SCSI(IO Thread)+ VirtIO 网卡 + QEMU Agent + 双光驱(系统 ISO + virtio-win,后者缺失自动下载)。
 
-**参数**:`--vmid`(默认 200 自动顺延)/ `--memory` / `--cores` / `--disk-size` / `--win-iso` / `--storage` / `--iso-store` / `--debug`。
+**参数**:`--vmid`(默认 200 自动顺延)/ `--memory` / `--cores` / `--disk-size` / `--win-iso` / `--virtio-iso <文件名>`(virtio-win ISO 显式指定;默认自动检测,缺失时自动下载,见 §3.3)/ `--storage` / `--iso-store` / `--debug`。
 
 **Windows 10 用户**:脚本 `ostype` 固定为 win11,建机后补一条 `qm set <vmid> -ostype win10` 即可,其余通用(Win10 建议同样 q35+OVMF+TPM 一套,便于以后直升 Win11)。
 
@@ -190,6 +201,7 @@ startup: order=1
 | 13 | USB 设备感叹号/失联 | 手柄等不见 | 冷启动 VM;宿主重插;必要时去掉 `usb3=0` |
 | 14 | 重启又进安装界面 | OVMF 光驱优先引导 | 装完移除安装 ISO + `boot order=scsi0` |
 | 15 | 无原生 RDP | 远程桌面不可用 | 需专业版/企业版;家庭版用第三方远程(§3.1) |
+| 16 | 自动下载 virtio-win 失败/极慢 | 安装器不认盘 | 手动下载 → scp 至 iso 目录,或建机时 `--virtio-iso`(§3.3) |
 
 ## 10. 命令速查
 

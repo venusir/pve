@@ -37,7 +37,7 @@
 
 | 位置 | 内容 | 说明 |
 | --- | --- | --- |
-| [Windows虚拟机部署/](Windows虚拟机部署/README.md) | Windows 10/11 虚拟机部署 | README 索引 + ⭐ [唯一部署文档](Windows虚拟机部署/Windows10-11虚拟机部署指南.md)(流程/踩坑速查/命令速查)+ [win11-htpc-deploy.sh](Windows虚拟机部署/win11-htpc-deploy.sh) 建机脚本 |
+| [Windows虚拟机部署/](Windows虚拟机部署/README.md) | Windows 10/11 虚拟机部署 | README 索引 + ⭐ [唯一部署文档](Windows虚拟机部署/Windows部署指南.md)(流程/踩坑速查/命令速查)+ [win11-htpc-deploy.sh](Windows虚拟机部署/win11-htpc-deploy.sh) 建机脚本 |
 | [Bazzite虚拟机部署/](Bazzite虚拟机部署/README.md) | Bazzite Deck 游戏虚拟机 | README 索引 + ⭐ [Bazzite部署指南.md](Bazzite虚拟机部署/Bazzite部署指南.md)(建机 → 安装 → 直通接入 → 点亮配置)+ [bazzite-deploy.sh](Bazzite虚拟机部署/bazzite-deploy.sh)(宿主建机)/ [bazzite-init.sh](Bazzite虚拟机部署/bazzite-init.sh)(客机内初始化) |
 | [Scripts/](Scripts/) | 直通脚本家族(与客户机无关,多目录共用) | [attach-all.sh](Scripts/attach-all.sh) 组合接入(显卡+音频+USB+直通盘+开机自启);[attach-gpu.sh](Scripts/attach-gpu.sh) / [attach-usb.sh](Scripts/attach-usb.sh) / [attach-disk.sh](Scripts/attach-disk.sh) 为 attach/detach 原语(含回退法) |
 

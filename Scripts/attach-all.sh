@@ -38,7 +38,7 @@ while [[ $# -gt 0 ]]; do
         --no-startup) NO_STARTUP=1; shift ;;
         --dry-run)   DRY_RUN=1; shift ;;
         --debug)     DEBUG=1; shift ;;
-        -h|--help)   sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help)   awk 'NR>2 { if (/^# ====/) exit; sub(/^# ?/, ""); print }' "$0"; exit 0 ;;
         *) die "未知参数: $1" ;;
     esac
 done
@@ -78,7 +78,9 @@ if [[ $DRY_RUN -eq 1 ]]; then
     exit 0
 fi
 
-read -r -p "确认接入全部组件?输入 Y 继续,其他键退出: " ans
+if ! read -r -p "确认接入全部组件?输入 Y 继续,其他键退出: " ans; then
+    echo "已取消(输入流结束)。"; exit 0
+fi
 [[ "$ans" == "Y" || "$ans" == "y" ]] || { echo "已取消。"; exit 0; }
 
 # 备份 conf
