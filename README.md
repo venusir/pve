@@ -28,7 +28,7 @@
 | --- | --- |
 | [显卡直通.md](显卡直通.md) | GPU PCIe 直通通用指南:宿主一次性准备 / IOMMU 核对 / 挂载 / **回退维护法** / 排错 |
 | [硬盘直通.md](硬盘直通.md) | 整盘直通(by-id)与 SATA 控制器直通通用指南,含客户机侧使用与数据安全 |
-| [Xbox直通.md](Xbox直通.md) | USB 设备直通通用姿势(Xbox 无线适配器完整案例,含 Linux xone 驱动深度排错) |
+| [USB直通.md](USB直通.md) | USB 设备直通通用姿势(Xbox 无线适配器完整案例,含 Linux xone 驱动深度排错) |
 | [Flirc遥控开关机.md](Flirc遥控开关机.md) | 宿主侧遥控开关虚拟机通用方案:电视遥控器 → Flirc → triggerhappy → PVE API(单键 toggle) |
 
 ## 目录结构与扩展约定

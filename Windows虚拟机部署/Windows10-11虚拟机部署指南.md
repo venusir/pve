@@ -2,7 +2,7 @@
 
 > 适用:Proxmox VE 8.x/9.x;Windows 10 / Windows 11
 > 实测环境:i3-12100 + RX 6650 XT + PVE 9.2 + 两阶段脚本
-> 关联(顶层 PVE 通用直通指南):[显卡直通](../显卡直通.md) / [硬盘直通](../硬盘直通.md) / [Xbox直通](../Xbox直通.md)
+> 关联(顶层 PVE 通用直通指南):[显卡直通](../显卡直通.md) / [硬盘直通](../硬盘直通.md) / [USB直通](../USB直通.md)
 
 ---
 
@@ -220,5 +220,5 @@ qm config <vmid> | grep -E '^(hostpci|usb|vga|scsi|startup|boot|agent|ostype)'
 ## 关联文档
 
 - [README.md](README.md) — 目录索引与快速开始
-- [显卡直通](../显卡直通.md) / [硬盘直通](../硬盘直通.md) / [Xbox直通](../Xbox直通.md) — PVE 通用直通指南(客户机无关)
+- [显卡直通](../显卡直通.md) / [硬盘直通](../硬盘直通.md) / [USB直通](../USB直通.md) — PVE 通用直通指南(客户机无关)
 - [Flirc遥控开关机](../Flirc遥控开关机.md) — PVE API 遥控开机/关机方案

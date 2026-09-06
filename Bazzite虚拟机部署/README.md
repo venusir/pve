@@ -31,6 +31,6 @@ sudo ./bazzite-init.sh --disk /dev/disk/by-id/<盘>
 
 - [显卡直通](../显卡直通.md) — GPU PCIe 直通/回退法
 - [硬盘直通](../硬盘直通.md) — 整盘/控制器直通
-- [Xbox直通](../Xbox直通.md) — USB 直通(含 Linux xone 深度排错)
+- [USB直通](../USB直通.md) — USB 直通姿势 + Xbox 案例(含 Linux xone 深度排错)
 - [Flirc遥控开关机](../Flirc遥控开关机.md) — 宿主侧遥控电源管理
 - [Windows虚拟机部署/](../Windows虚拟机部署/) — Windows 客机完整流程(VM 创建/直通姿势互通)

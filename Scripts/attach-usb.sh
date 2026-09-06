@@ -4,7 +4,7 @@
 #
 # attach: 按 VID:PID 挂载到空闲 usbN 口(默认 usb3=0 兼容旧写法,USB3 通路用 --usb3)
 # detach: 移除指定 VID:PID 的直通行
-# 通用 USB 直通细节见 PVE/Xbox直通.md
+# 通用 USB 直通细节见 PVE/USB直通.md
 #
 # 用法:
 #   ./attach-usb.sh --vmid 200 --vidpid 045e:02fe
